@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Lokesh Naam Jap Counter</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101010;color:#eee;font-family:Arial,sans-serif;text-align:center}
+.wrap{max-width:520px;margin:auto;padding:18px 16px 35px}
+h1{font-size:27px;margin:8px 0 2px}.sub{font-size:14px;color:#aaa;margin-bottom:20px}
+.card{background:#1d1d1d;border-radius:20px;padding:18px;margin:14px 0;box-shadow:0 2px 10px #0005}
+.label{color:#bbb;font-size:15px}.time,.count,.big{color:#3d9cff;font-weight:700}.time{font-size:39px;margin:8px}.count{font-size:62px;margin:4px}.small{color:#bbb;font-size:14px;margin-top:6px}
+.progress{height:10px;background:#3a3a3a;border-radius:20px;overflow:hidden;margin:18px 2px 2px}.bar{height:100%;background:#2688ff;width:0}
+button.jap{width:270px;height:270px;border-radius:50%;border:0;background:#2387ff;color:#fff;font-size:31px;font-weight:700;box-shadow:0 7px 0 #075dbb;margin:18px auto;touch-action:manipulation}
+button.jap:active{transform:translateY(4px);box-shadow:0 3px 0 #075dbb}
+.row{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap}.row input{width:160px;background:#222;color:#fff;border:1px solid #666;border-radius:8px;padding:11px;font-size:18px;text-align:center}
+.btn{background:#333;color:#fff;border:0;border-radius:10px;padding:11px 16px;font-weight:700}.hint{font-size:13px;color:#999;line-height:1.5}
+.status{font-size:13px;color:#7fc1ff;margin-top:7px}.red{color:#ffb0b0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>🙏 Lokesh Chandel</h1>
+<div class="sub">पूरी स्क्रीन में बड़ा जप बटन — हर नाम-जप पर दबाएँ</div>
+
+<div class="card">
+<div class="label">कुल जप का समय</div>
+<div id="elapsed" class="time">00:00:00</div>
+<div id="avgText" class="small">अभी औसत समय उपलब्ध नहीं</div>
+<div id="etaText" class="small">लक्ष्य पूरा होने का अनुमान: —</div>
+<div id="status" class="status">जप शुरू करने के लिए बटन दबाएँ</div>
+</div>
+
+<div class="card">
+<div class="label">कुल नाम-जप</div>
+<div id="count" class="count">0</div>
+<div id="targetLabel" class="small">लक्ष्य: 1,08,000</div>
+<div class="progress"><div id="bar" class="bar"></div></div>
+</div>
+
+<button id="jap" class="jap">जप +1</button>
+
+<div class="card">
+<div class="small">16 नाम-जप = 1 लेप</div>
+<div id="leap" class="big" style="font-size:40px">0</div>
+<div id="leapDetail" class="small">इस लेप में: 0 / 16</div>
+<hr style="border:0;border-top:1px solid #444;margin:20px 0">
+<div class="small">108 नाम-जप = 1 माला</div>
+<div id="mala" class="big" style="font-size:40px">0</div>
+<div id="malaDetail" class="small">इस माला में: 0 / 108</div>
+</div>
+
+<div class="card">
+<div class="label">लक्ष्य बदलें</div><br>
+<div class="row"><input id="target" type="number" min="1" value="108000"><span>नाम-जप</span></div><br>
+<div class="row"><button class="btn" id="save">लक्ष्य सेव करें</button><button class="btn" id="reset">रीसेट</button></div>
+</div>
+<div class="hint">⏱️ समय केवल तब चलता है जब आप जप कर रहे हों।<br>अगर 2 सेकंड तक कोई जप नहीं किया, तो टाइमर रुक जाएगा।</div>
+</div>
+
+<script>
+let count=Number(localStorage.getItem('japCount')||0);
+let target=Number(localStorage.getItem('japTarget')||108000);
+let activeSeconds=Number(localStorage.getItem('activeSeconds')||0);
+let lastTap=0, tick=null;
+
+const $=id=>document.getElementById(id);
+function fmt(sec){
+  sec=Math.max(0,Math.floor(sec));
+  let h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60;
+  return [h,m,s].map((x,i)=>String(x).padStart(2,'0')).join(':');
+}
+function save(){localStorage.setItem('japCount',count);localStorage.setItem('japTarget',target);localStorage.setItem('activeSeconds',activeSeconds);}
+function render(){
+  $('count').textContent=count.toLocaleString('en-IN');
+  $('targetLabel').textContent='लक्ष्य: '+target.toLocaleString('en-IN');
+  $('target').value=target;
+  $('elapsed').textContent=fmt(activeSeconds);
+  let avg=count>0?activeSeconds/count:0;
+  $('avgText').textContent=count?`औसत समय: ${avg.toFixed(2)} सेकंड / नाम-जप`:'अभी औसत समय उपलब्ध नहीं';
+  let remaining=Math.max(0,target-count);
+  $('etaText').textContent=remaining===0?'🎉 लक्ष्य पूरा हो गया!':(avg>0?`लक्ष्य पूरा होने का अनुमान: ${fmt(Math.ceil(remaining*avg))}`:'लक्ष्य पूरा होने का अनुमान: —');
+  $('bar').style.width=Math.min(100,target?count/target*100:0)+'%';
+  $('leap').textContent=Math.floor(count/16);
+  $('leapDetail').textContent='इस लेप में: '+(count%16)+' / 16';
+  $('mala').textContent=Math.floor(count/108);
+  $('malaDetail').textContent='इस माला में: '+(count%108)+' / 108';
+}
+function startTimer(){
+  if(tick)return;
+  tick=setInterval(()=>{
+    if(Date.now()-lastTap<=2000){
+      activeSeconds++;
+      save();render();
+    }else{
+      clearInterval(tick);tick=null;
+      $('status').textContent='जप रुका हुआ है';
+    }
+  },1000);
+}
+$('jap').addEventListener('click',()=>{
+  count++; lastTap=Date.now(); save(); render(); startTimer();
+  $('status').textContent='🟢 जप चल रहा है';
+});
+$('jap').addEventListener('touchstart',e=>{e.preventDefault(); $('jap').click()},{passive:false});
+$('save').onclick=()=>{target=Math.max(1,Number($('target').value)||1);save();render()};
+$('reset').onclick=()=>{if(confirm('क्या आप जप की संख्या और समय दोनों रीसेट करना चाहते हैं?')){count=0;activeSeconds=0;save();render();$('status').textContent='जप शुरू करने के लिए बटन दबाएँ'}};
+render();
+</script>
+</body></html>
